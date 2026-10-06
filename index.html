@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lumix IA</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#080b12;color:#fff;min-height:100vh}
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    header{padding:18px 20px;border-bottom:1px solid #263044;background:rgba(8,11,18,.92)}
+    .brand{font-size:26px;font-weight:800}
+    .brand span{color:#6ea8ff}
+    .main{flex:1;display:grid;grid-template-columns:360px 1fr;min-height:0}
+    .character{background:linear-gradient(180deg,rgba(8,11,18,.2),rgba(8,11,18,.95)),url('/lumix-personagem.png') center top/cover no-repeat;min-height:520px}
+    .chat{display:flex;flex-direction:column;max-width:900px;width:100%;margin:auto;height:calc(100vh - 82px)}
+    #messages{flex:1;overflow:auto;padding:24px}
+    .msg{max-width:80%;padding:13px 16px;border-radius:16px;margin:10px 0;white-space:pre-wrap;line-height:1.45}
+    .user{margin-left:auto;background:#2563eb}
+    .assistant{margin-right:auto;background:#151c2b;border:1px solid #29344a}
+    .composer{display:flex;gap:10px;padding:16px;border-top:1px solid #263044;background:#0b0f18}
+    textarea{flex:1;resize:none;min-height:52px;max-height:150px;border:1px solid #34415a;border-radius:14px;background:#111827;color:#fff;padding:14px;font-size:16px}
+    button{border:0;border-radius:14px;padding:0 20px;background:#2563eb;color:white;font-weight:700;font-size:16px}
+    button:disabled{opacity:.5}
+    .hint{text-align:center;color:#8792a7;font-size:12px;padding:0 16px 10px}
+    @media(max-width:760px){.main{grid-template-columns:1fr}.character{min-height:230px;max-height:270px}.chat{height:auto;min-height:calc(100vh - 350px)}.msg{max-width:90%}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header><div class="brand">Lumix <span>IA</span></div></header>
+  <div class="main">
+    <aside class="character" aria-label="Personagem Lumix"></aside>
+    <section class="chat">
+      <div id="messages">
+        <div class="msg assistant">Olá! Eu sou o Lumix. Pode mandar sua pergunta.</div>
+      </div>
+      <div class="hint">As respostas são geradas pela IA conectada ao servidor do Lumix.</div>
+      <form class="composer" id="form">
+        <textarea id="input" placeholder="Digite sua pergunta..." required></textarea>
+        <button id="send" type="submit">Enviar</button>
+      </form>
+    </section>
+  </div>
+</div>
+<script>
+const form=document.getElementById('form');
+const input=document.getElementById('input');
+const messages=document.getElementById('messages');
+const send=document.getElementById('send');
+const history=[];
+
+function addMessage(role,text){
+  const div=document.createElement('div');
+  div.className='msg '+role;
+  div.textContent=text;
+  messages.appendChild(div);
+  messages.scrollTop=messages.scrollHeight;
+}
+form.addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const text=input.value.trim();
+  if(!text||send.disabled)return;
+  input.value='';
+  addMessage('user',text);
+  history.push({role:'user',content:text});
+  send.disabled=true;
+  send.textContent='...';
+  try{
+    const r=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:history})
+    });
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||'Erro no servidor.');
+    addMessage('assistant',data.answer||'Não consegui responder agora.');
+    history.push({role:'assistant',content:data.answer||''});
+  }catch(err){
+    addMessage('assistant','Não consegui conectar ao servidor do Lumix agora. Verifique se o servidor está publicado e se a chave da API foi configurada.');
+  }finally{
+    send.disabled=false;
+    send.textContent='Enviar';
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>
